@@ -1,12 +1,11 @@
 /** 
- * @file vegas_gpu_standalone.cu
- * VEGAS Low-Bandwidth Modes - Stand-Alone GPU Implementation
+ * @file grating.cu
  *
  * @author Jayanth Chennamangalam
  * @date 2011.07.08
  */
 
-#include "vegas_gpu_standalone.h"
+#include "grating.h"
 
 #define PL  1
 
