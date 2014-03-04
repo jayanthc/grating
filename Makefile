@@ -36,9 +36,15 @@ BINDIR = bin
 # command definitions
 DELCMD = rm
 
-all: grating grating_gentestdata tags
+all: grating grating.tex grating.streams grating_gentestdata tags
 
 grating: $(SRCDIR)/grating.cu $(SRCDIR)/grating.h
+	$(NVCC) $(NVFLAGS) $< -lm $(LFLAGS_CUFFT) $(LFLAGS_PGPLOT) -o $(BINDIR)/$@
+
+grating.tex: $(SRCDIR)/grating.tex.cu $(SRCDIR)/grating.tex.h
+	$(NVCC) $(NVFLAGS) $< -lm $(LFLAGS_CUFFT) $(LFLAGS_PGPLOT) -o $(BINDIR)/$@
+
+grating.streams: $(SRCDIR)/grating.streams.cu $(SRCDIR)/grating.streams.h
 	$(NVCC) $(NVFLAGS) $< -lm $(LFLAGS_CUFFT) $(LFLAGS_PGPLOT) -o $(BINDIR)/$@
 
 # test-data-generation program
@@ -46,7 +52,7 @@ grating_gentestdata: $(TOOLSDIR)/grating_gentestdata.c
 	$(CC) $(CFLAGS) $< $(LFLAGS_MATH) -o $(BINDIR)/$@
 
 tags: $(SRCDIR)/*.cu $(SRCDIR)/*.h
-	ctags --language-force=C *.cu *.h
+	ctags --language-force=C $(SRCDIR)/*.cu $(SRCDIR)/*.h
 
 #clean:
 #	$(DELCMD) $(IDIR)/yapp_version.o
