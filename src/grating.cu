@@ -456,14 +456,6 @@ int Init()
         (void) fprintf(stderr, "ERROR: No CUDA-capable device found!\n");
         return EXIT_FAILURE;
     }
-    else if (iDevCount > 1)
-    {
-        /* TODO: figure this out */
-        (void) fprintf(stderr,
-                       "ERROR: More than one CUDA-capable device "
-                       "found! Don't know how to proceed!\n");
-        return EXIT_FAILURE;
-    }
 
     /* TODO: make it automagic */
     CUDASafeCallWithCleanUp(cudaSetDevice(0));
@@ -636,9 +628,9 @@ int Init()
         g_dimBCopy.x = g_iMaxThreadsPerBlock;
         g_dimBAccum.x = g_iMaxThreadsPerBlock;
     }
-    g_dimGPFB.x = (g_iNumSubBands * g_iNFFT) / g_iMaxThreadsPerBlock;
-    g_dimGCopy.x = (g_iNumSubBands * g_iNFFT) / g_iMaxThreadsPerBlock;
-    g_dimGAccum.x = (g_iNumSubBands * g_iNFFT) / g_iMaxThreadsPerBlock;
+    g_dimGPFB.x = (g_iNumSubBands * g_iNFFT) / g_dimBPFB.x;
+    g_dimGCopy.x = (g_iNumSubBands * g_iNFFT) / g_dimBCopy.x;
+    g_dimGAccum.x = (g_iNumSubBands * g_iNFFT) / g_dimBAccum.x;
 
     iRet = ReadData();
     if (iRet != EXIT_SUCCESS)
