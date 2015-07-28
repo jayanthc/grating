@@ -64,6 +64,7 @@ int main(int argc, char *argv[])
     int iRet = EXIT_SUCCESS;
     int iSpecCount = 0;
     int iNumAcc = DEF_ACC;
+    int iCudaDevice = DEFAULT_CUDA_DEVICE;
     int iProcData = 0;
     cudaError_t iCUDARet = cudaSuccess;
 #if BENCHMARKING
@@ -93,9 +94,9 @@ int main(int argc, char *argv[])
     int iNextOpt = 0;
     /* valid short options */
 #if PLOT
-    const char* const pcOptsShort = "hb:n:pa:s:";
+    const char* const pcOptsShort = "hb:n:pa:d:s:";
 #else
-    const char* const pcOptsShort = "hb:n:pa:";
+    const char* const pcOptsShort = "hb:n:pa:d:";
 #endif
     /* valid long options */
     const struct option stOptsLong[] = {
@@ -104,6 +105,7 @@ int main(int argc, char *argv[])
         { "nfft",           1, NULL, 'n' },
         { "pfb",            0, NULL, 'p' },
         { "nacc",           1, NULL, 'a' },
+        { "device",         1, NULL, 'd' },
 #if PLOT
         { "fsamp",          1, NULL, 's' },
 #endif
@@ -144,6 +146,11 @@ int main(int argc, char *argv[])
                 iNumAcc = (int) atoi(optarg);
                 break;
 
+            case 'd':   /* -d or --device */
+                /* set option */
+                iCudaDevice = (int) atoi(optarg);
+                break;
+
 #if PLOT
             case 's':   /* -s or --fsamp */
                 /* set option */
@@ -176,12 +183,13 @@ int main(int argc, char *argv[])
     (void) strncpy(g_acFileData, argv[optind], 256);
     g_acFileData[255] = '\0';
 
+
 #if BENCHMARKING
     (void) printf("* Benchmarking run commencing...\n");
 #endif
 
     /* initialise */
-    iRet = Init();
+    iRet = Init(iCudaDevice);
     if (iRet != EXIT_SUCCESS)
     {
         (void) fprintf(stderr, "ERROR! Init failed!\n");
@@ -399,9 +407,12 @@ int main(int argc, char *argv[])
     }
 #if (!BENCHMARKING)
     (void) gettimeofday(&stStop, NULL);
-    (void) printf("Time taken (barring Init()): %gs\n",
-                  ((stStop.tv_sec + (stStop.tv_usec * USEC2SEC))
-                   - (stStart.tv_sec + (stStart.tv_usec * USEC2SEC))));
+    float dT = (stStop.tv_sec + (stStop.tv_usec * USEC2SEC))
+             - (stStart.tv_sec + (stStart.tv_usec * USEC2SEC));
+    float fTotThruPut = ((float)g_iSizeRead)
+                  * ((float)g_iReadCount)
+                  / (dT * NUM_BYTES_PER_SAMP);
+    (void) printf("Time taken (barring Init()): %gs : %.3fMs/s\n", dT, fTotThruPut*1e-6);
 #endif
 
 #if OUTFILE
@@ -432,9 +443,9 @@ int main(int argc, char *argv[])
 
 /* function that creates the FFT plan, allocates memory, initialises counters,
    etc. */
-int Init()
+int Init(int iCudaDevice)
 {
-    int iDevCount = 0;
+    int iDevCount = 0, i;
     cudaDeviceProp stDevProp = {0};
     int iRet = EXIT_SUCCESS;
     cufftResult iCUFFTRet = CUFFT_SUCCESS;
@@ -456,9 +467,19 @@ int Init()
         (void) fprintf(stderr, "ERROR: No CUDA-capable device found!\n");
         return EXIT_FAILURE;
     }
-
-    /* TODO: make it automagic */
-    CUDASafeCallWithCleanUp(cudaSetDevice(0));
+    if (iCudaDevice >= iDevCount)
+    {
+        (void) fprintf(stderr, "ERROR: requested device %d not among present devices 0..%d!\n", iCudaDevice, iDevCount-1);
+        return EXIT_FAILURE;
+    }
+    for (i = 0; i < iDevCount; i++)
+    {
+        CUDASafeCallWithCleanUp(cudaGetDeviceProperties(&stDevProp, i));
+        printf("CUDA Device #%d : %s, Compute Capability %d.%d  %s\n", 
+              i, stDevProp.name, stDevProp.major, stDevProp.minor,
+              (i==iCudaDevice) ? "(selected)" : "");
+    }
+    CUDASafeCallWithCleanUp(cudaSetDevice(iCudaDevice));
 
 #if BENCHMARKING
     CUDASafeCallWithCleanUp(cudaEventCreate(&g_cuStart));
@@ -986,7 +1007,7 @@ void PrintBenchmarks(float fTotPFB,
                      float fTotCpOut,
                      int iCountCpOut)
 {
-    float fTotal = 0.0;
+    float fTotal = 0.0, fTotThruPut = 0.0;
     
     fTotal = g_fTotCpIn
              + fTotPFB
@@ -994,9 +1015,13 @@ void PrintBenchmarks(float fTotPFB,
              + fTotFFT
              + fTotAccum
              + fTotCpOut;
+    fTotThruPut = ((float)g_iSizeRead) 
+                  * ((float)g_iReadCount) 
+                  / (1e-3*fTotal * NUM_BYTES_PER_SAMP);
+
     (void) printf("    Total elapsed time for\n");
     (void) printf("        %6d calls to cudaMemcpy(Host2Device)          : "
-                  "%5.3fms, %2d%%; Average = %5.3fms\n",
+                  "%8.3fms, %2d%%; Average = %5.3fms\n",
                   g_iCountCpIn,
                   g_fTotCpIn,
                   (int) ((g_fTotCpIn / fTotal) * 100),
@@ -1004,7 +1029,7 @@ void PrintBenchmarks(float fTotPFB,
     if (g_iIsPFBOn)
     {
         (void) printf("        %6d calls to DoPFB()                          : "
-                      "%5.3fms, %2d%%; Average = %5.3fms\n",
+                      "%8.3fms, %2d%%; Average = %5.3fms\n",
                       iCountPFB,
                       fTotPFB,
                       (int) ((fTotPFB / fTotal) * 100),
@@ -1013,31 +1038,32 @@ void PrintBenchmarks(float fTotPFB,
     else
     {
         (void) printf("        %6d calls to CopyDataForFFT()                 : "
-                      "%5.3fms, %2d%%; Average = %5.3fms\n",
+                      "%8.3fms, %2d%%; Average = %5.3fms\n",
                       iCountCpInFFT,
                       fTotCpInFFT,
                       (int) ((fTotCpInFFT / fTotal) * 100),
                       fTotCpInFFT / iCountCpInFFT);
     }
     (void) printf("        %6d calls to DoFFT()                          : "
-                  "%5.3fms, %2d%%; Average = %5.3fms\n",
+                  "%8.3fms, %2d%%; Average = %5.3fms\n",
                   iCountFFT,
                   fTotFFT,
                   (int) ((fTotFFT / fTotal) * 100),
                   fTotFFT / iCountFFT);
     (void) printf("        %6d calls to Accumulate()                     : "
-                  "%5.3fms, %2d%%; Average = %5.3fms\n",
+                  "%8.3fms, %2d%%; Average = %5.3fms\n",
                   iCountAccum,
                   fTotAccum,
                   (int) ((fTotAccum / fTotal) * 100),
                   fTotAccum / iCountAccum);
     (void) printf("        %6d calls to cudaMemcpy(Device2Host)          : "
-                  "%5.3fms, %2d%%; Average = %5.3fms\n",
+                  "%8.3fms, %2d%%; Average = %5.3fms\n",
                   iCountCpOut,
                   fTotCpOut,
                   (int) ((fTotCpOut / fTotal) * 100),
                   fTotCpOut / iCountCpOut);
-
+    (void) printf("    Average throughput: %.3f million complex dual-pol samples/sec\n",
+                  fTotThruPut*1e-6);
     return;
 }
 #endif
@@ -1356,6 +1382,8 @@ void PrintUsage(const char *pcProgName)
     (void) printf("Enable PFB\n");
     (void) printf("    -a  --nacc <value>                   ");
     (void) printf("Number of spectra to add\n");
+    (void) printf("    -d  --device <value>                 ");
+    (void) printf("The CUDA device to use\n");
 #if PLOT
     (void) printf("    -s  --fsamp <value>                  ");
     (void) printf("Sampling frequency\n");
