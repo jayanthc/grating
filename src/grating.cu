@@ -19,6 +19,7 @@ int g_iReadCount = 0;
 char4* g_pc4Data_d = NULL;              /* raw data starting address */
 char4* g_pc4DataRead_d = NULL;          /* raw data read pointer */
 int g_iNFFT = DEF_LEN_SPEC;
+int g_iMaxPhysThreads;
 dim3 g_dimBPFB(1, 1, 1);
 dim3 g_dimGPFB(1, 1);
 dim3 g_dimBCopy(1, 1, 1);
@@ -475,8 +476,9 @@ int Init(int iCudaDevice)
     for (i = 0; i < iDevCount; i++)
     {
         CUDASafeCallWithCleanUp(cudaGetDeviceProperties(&stDevProp, i));
-        printf("CUDA Device #%d : %s, Compute Capability %d.%d  %s\n", 
+        printf("CUDA Device #%d : %s, Compute Capability %d.%d, %d Threads  %s\n", 
               i, stDevProp.name, stDevProp.major, stDevProp.minor,
+              stDevProp.multiProcessorCount * stDevProp.maxThreadsPerMultiProcessor,
               (i==iCudaDevice) ? "(selected)" : "");
     }
     CUDASafeCallWithCleanUp(cudaSetDevice(iCudaDevice));
@@ -489,6 +491,8 @@ int Init(int iCudaDevice)
 
     CUDASafeCallWithCleanUp(cudaGetDeviceProperties(&stDevProp, 0));
     g_iMaxThreadsPerBlock = stDevProp.maxThreadsPerBlock;
+    g_iMaxPhysThreads = stDevProp.multiProcessorCount * stDevProp.maxThreadsPerMultiProcessor;
+     
 
     /* check if the data buffer is large enough to contain at least one
        [PFB +] transform */
