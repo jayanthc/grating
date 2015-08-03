@@ -164,12 +164,15 @@ int main(int argc, char *argv[])
  */
 void PrintUsage(const char *pcProgName)
 {
+    (void) printf("Generates a data file with a 8-bit quantized dual-polarization\n"
+                  "complex signal containing %d tones and uniform noise sampled at %f Ms/s.\n", 
+                  NUM_FREQS, F_S);
     (void) printf("Usage: %s [options] <data-file>\n",
                   pcProgName);
     (void) printf("    -h  --help                           ");
     (void) printf("Display this usage information\n");
     (void) printf("    -n  --nsamp <value>                  ");
-    (void) printf("Number of time samples\n");
+    (void) printf("Number of complex-valued samples in each polarization.\n");
 
     return;
 }

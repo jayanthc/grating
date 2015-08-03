@@ -21,6 +21,7 @@
 #define PLOT                0
 #define BENCHMARKING        0
 #define OUTFILE             0
+#define DEFAULT_CUDA_DEVICE 0  // change to switch to other card
 
 #include <string.h>     /* for memset(), strncpy(), memcpy(), strerror() */
 #include <sys/types.h>  /* for open() */
@@ -86,7 +87,7 @@ typedef unsigned char BYTE;
 /**
  * Initialises the program.
  */
-int Init(void);
+int Init(int);
 
 /**
  * Reads all data from the input file and loads it into memory.
