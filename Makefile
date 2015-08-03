@@ -14,16 +14,13 @@ CFLAGS = -O3 -std=gnu99 -pedantic -Wall $(CFLAGS_INC_PGPLOT) $(CFLAGS_INC_FFTW3)
 
 # NVCC compiler and flags
 NVCC = nvcc
-NVFLAGS = -O3 --ptxas-options=-v --compiler-bindir=/usr/bin/gcc
+NVFLAGS = --ptxas-options=-v --compiler-bindir=/usr/bin/gcc -O3
 
-# NVCC targets (Tesla K40m has CC 3.5, GeForce GTX TITAN X has CC 5.2)
-NVFLAGS +=  \
+# NVCC targets
+# (Tesla K40m CC: 3.5, GeForce GTX TITAN CC: 3.5, GeForce GTX TITAN X CC: 5.2)
+#NVFLAGS +=  \
   -gencode=arch=compute_35,code=sm_35 \
   -gencode=arch=compute_35,code=compute_35
-NVFLAGS +=  \
-  -gencode=arch=compute_52,code=sm_52 \
-  -gencode=arch=compute_52,code=compute_52
-
 
 # linker flags
 LFLAGS_PGPLOT_DIR =# define if not in $PATH (as -L[...])
@@ -48,7 +45,7 @@ DELCMD = rm
 all: grating grating_gentestdata tags
 
 grating: $(SRCDIR)/grating.cu $(SRCDIR)/grating.h
-	$(NVCC) $(NVFLAGS) $< -o $(BINDIR)/$@ $(LFLAGS_MATH) $(LFLAGS_CUFFT) $(LFLAGS_PGPLOT)
+	$(NVCC) $(NVFLAGS) $< $(LFLAGS_MATH) $(LFLAGS_CUFFT) $(LFLAGS_PGPLOT) -o $(BINDIR)/$@
 
 # test-data-generation program
 grating_gentestdata: $(TOOLSDIR)/grating_gentestdata.c
