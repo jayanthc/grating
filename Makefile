@@ -26,11 +26,10 @@ NVFLAGS = --ptxas-options=-v --compiler-bindir=/usr/bin/gcc -O3
 LFLAGS_PGPLOT_DIR =# define if not in $PATH (as -L[...])
 LFLAGS_CUFFT_DIR =# define if not in $PATH (as -L[...])
 LFLAGS_CUFFT = $(LFLAGS_CUFFT_DIR) -lcufft
-# in some cases, linking needs to be done with the X11 library, in which case
-# append '-lX11' (and possibly the path to the library) to the line below.
-# libgfortran may also be needed in some case, in which case append
-# '-lgfortran' (and possibly the path to the library) to the line below
-LFLAGS_PGPLOT = $(LFLAGS_PGPLOT_DIR)  -lcpgplot -lpgplot -lpng -lgfortran -lX11
+# in some cases, linking may need to be done with the X11 library, libgfortran,
+# or libpng, in which case append '-lX11', '-lgfortran', or '-lpng',
+# respectively (and the corresponding paths, if required), to the line below
+LFLAGS_PGPLOT = $(LFLAGS_PGPLOT_DIR)  -lcpgplot -lpgplot
 LFLAGS_MATH = -lm
 
 # directories
