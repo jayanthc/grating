@@ -1,9 +1,6 @@
-#!/usr/bin/python
-
-# vegas_gencoeff.py
-# Generate PFB filter coefficients for VEGAS HPC low-bandwidth modes. The
-#   filter coefficients array contains duplicates for optimised reading
-#   from the GPU.
+# grating_gencoeff.py
+# Generate PFB filter coefficients. The filter coefficients array contains
+# duplicates for optimised reading from the GPU.
 #
 # Created by Jayanth Chennamangalam based on code by Sean McHugh, UCSB
 
@@ -11,20 +8,21 @@ import sys
 import getopt
 import math
 import numpy
-import matplotlib.pyplot as plotter
+import matplotlib.pyplot as plt
 
-# function definitions
+
 def PrintUsage(ProgName):
     "Prints usage information."
-    print "Usage: " + ProgName + " [options]"
-    print "    -h  --help                 Display this usage information"
-    print "    -n  --nfft <value>         Number of points in FFT"
-    print "    -t  --taps <value>         Number of taps in PFB"
-    print "    -b  --sub-bands <value>    Number of sub-bands in data"
-    print "    -d  --data-type <value>    Data type - \"float\" or "          \
-          + "\"signedchar\""
-    print "    -p  --no-plot              Do not plot coefficients"
+    print("Usage: " + ProgName + " [options]")
+    print("    -h  --help                 Display this usage information")
+    print("    -n  --nfft <value>         Number of points in FFT")
+    print("    -t  --taps <value>         Number of taps in PFB")
+    print("    -b  --sub-bands <value>    Number of sub-bands in data")
+    print("    -d  --data-type <value>    Data type - \"float\" or "
+          + "\"signedchar\"")
+    print("    -p  --no-plot              Do not plot coefficients")
     return
+
 
 # default values
 NFFT = 32768                # number of points in FFT
@@ -48,7 +46,7 @@ if (1 == len(sys.argv)):
 # get the arguments using the getopt module
 try:
     (Opts, Args) = getopt.getopt(sys.argv[1:], OptsShort, OptsLong)
-except getopt.GetoptError, ErrMsg:
+except getopt.GetoptError as ErrMsg:
     # print usage information and exit
     sys.stderr.write("ERROR: " + str(ErrMsg) + "!\n")
     PrintUsage(ProgName)
@@ -86,7 +84,7 @@ if ("signedchar" == DataType):
     for i in range(0, 128):
         Map[i] = float(i) / 128
     for i in range(128, 256):
-        Map[i] = - (float(256 -i) / 128)
+        Map[i] = -(float(256 - i) / 128)
 
 # 32-bit (float) coefficients
 PFBCoeffFloat32 = numpy.zeros(M * NSubBands, numpy.float32)
@@ -98,7 +96,7 @@ for i in range(len(PFBCoeff)):
     Coeff = float(PFBCoeff[i])
     if ("signedchar" == DataType):
         for j in range(256):
-            #if (math.fabs(Coeff - Map[j]) <= (0.0078125 / 2)):
+            # if (math.fabs(Coeff - Map[j]) <= (0.0078125 / 2)):
             if (math.fabs(Coeff - Map[j]) <= 0.0078125):
                 for m in range(NSubBands):
                     PFBCoeffInt8[k+m] = j
@@ -114,25 +112,21 @@ for i in range(len(PFBCoeff)):
     k = k + NSubBands
 
 # write the coefficients to disk and also plot it
-FileCoeff = open("coeff_"                                                     \
-                  + DataType + "_"                                            \
-                  + str(NTaps) + "_"                                          \
-                  + str(NFFT) + "_"                                           \
-                  + str(NSubBands) + ".dat",                                  \
+FileCoeff = open("coeff_" + DataType + "_" + str(NTaps) + "_" + str(NFFT)
+                 + "_" + str(NSubBands) + ".dat",
                  "wb")
 if ("signedchar" == DataType):
     FileCoeff.write(PFBCoeffInt8)
     # plot the coefficients
     if (Plot):
-        plotter.plot(PFBCoeffInt8)
+        plt.plot(PFBCoeffInt8)
 else:
     FileCoeff.write(PFBCoeffFloat32)
     # plot the coefficients
     if (Plot):
-        plotter.plot(PFBCoeffFloat32)
+        plt.plot(PFBCoeffFloat32)
 
 FileCoeff.close()
 
 if (Plot):
-    plotter.show()
-
+    plt.show()
